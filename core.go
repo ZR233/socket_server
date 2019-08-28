@@ -10,9 +10,17 @@ import (
 	"sync/atomic"
 )
 
+type HeaderHandler func(headerData []byte) (bodyLen int, err error)
+type OnConnect func(client *Client)
+
 type Config struct {
-	ListenIP string
-	Port     int
+	ListenIP      string
+	Port          int
+	HeaderHandler HeaderHandler
+	BodyHandler   func(bodyData []byte, client *Client) error
+	OnConnect     OnConnect
+	OnError       func(err error, client *Client)
+	HeaderLen     int
 }
 
 type Logger interface {
@@ -26,7 +34,6 @@ type Core struct {
 	clientPool map[uint32]*Client
 	logger     Logger
 	idIter     *uint32
-	OnConnect  func(client *Client)
 }
 
 func NewCore(config *Config) *Core {
@@ -55,10 +62,10 @@ func (c *Core) Run() {
 			c.logger.Warn(err)
 			continue
 		}
-		client := newClient(&conn, c)
+		client := newClient(conn, c)
 		id := atomic.AddUint32(c.idIter, 1)
 		client.id = id
-		c.OnConnect(client)
+		c.config.OnConnect(client)
 		if !client.Stop {
 			go client.Run()
 		}
