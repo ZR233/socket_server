@@ -6,6 +6,7 @@ package socket_server
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 )
@@ -92,7 +93,9 @@ func (c *Client) readLoop() {
 	}()
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
-		panic(err)
+	_:
+		c.Close()
+		return
 	}
 
 	if n != c.core.config.HeaderLen {
@@ -129,7 +132,9 @@ func (c *Client) writeLoop() {
 
 	n, err := c.conn.Write(data)
 	if err != nil {
-		panic(err)
+	_:
+		c.Close()
+		return
 	}
 	if n != len(data) {
 		panic(errors.New("write len error"))
@@ -141,6 +146,7 @@ func (c *Client) Write(data []byte) {
 }
 
 func (c *Client) Close() error {
+	c.core.logger.Debug(fmt.Sprintf("client (%d) close", c.Id))
 	select {
 	case c.stopChan <- false:
 	_:
