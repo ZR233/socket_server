@@ -71,3 +71,7 @@ func (c *Core) Run() {
 		}
 	}
 }
+
+func (c *Core) deleteClient(client *Client) {
+	delete(c.clientPool, client.Id)
+}
