@@ -64,7 +64,7 @@ func (c *Core) Run() {
 		}
 		client := newClient(conn, c)
 		id := atomic.AddUint32(c.idIter, 1)
-		client.id = id
+		client.Id = id
 		c.config.OnConnect(client)
 		if !client.Stop {
 			go client.Run()

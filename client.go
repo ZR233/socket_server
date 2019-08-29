@@ -13,7 +13,7 @@ import (
 type Client struct {
 	conn       net.Conn
 	core       *Core
-	id         uint32
+	Id         uint32
 	writeChan  chan []byte
 	headerBuff []byte
 	stopChan   chan bool
