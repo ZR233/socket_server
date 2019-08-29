@@ -7,7 +7,7 @@ package socket_server
 import "time"
 
 type Context struct {
-	client *Client
+	Client *Client
 	Keys   map[string]interface{}
 }
 
