@@ -148,7 +148,7 @@ func (c *Client) Write(data []byte) {
 func (c *Client) Close() error {
 	c.core.logger.Debug(fmt.Sprintf("client (%d) close", c.Id))
 	select {
-	case c.stopChan <- false:
+	case c.stopChan <- true:
 	_:
 		c.conn.Close()
 		return nil
