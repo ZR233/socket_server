@@ -27,6 +27,7 @@ func newClient(conn net.Conn, core *Core) *Client {
 		core: core,
 	}
 	c.stopChan = make(chan bool, 1)
+	c.writeChan = make(chan []byte, 10)
 	headerLen := c.core.config.HeaderLen
 	c.headerBuff = make([]byte, headerLen)
 	c.Stop = false
