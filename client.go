@@ -41,6 +41,7 @@ func (c *Client) Run() {
 	defer func() {
 		close(c.writeChan)
 		close(c.stopChan)
+		c.core = nil
 	}()
 
 	wg := sync.WaitGroup{}
