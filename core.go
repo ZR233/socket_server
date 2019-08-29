@@ -11,7 +11,7 @@ import (
 )
 
 type HeaderHandler func(headerData []byte, ctx *Context) (bodyLen int, err error)
-type OnConnect func(ctx *Context)
+type OnConnect func(client *Client)
 
 type Config struct {
 	ListenIP      string

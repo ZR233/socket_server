@@ -71,7 +71,7 @@ func (c *Client) Run() {
 
 func (c *Client) readLoop() {
 	ctx := &Context{
-		client: c,
+		Client: c,
 	}
 
 	defer func() {
