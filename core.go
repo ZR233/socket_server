@@ -10,16 +10,16 @@ import (
 	"sync/atomic"
 )
 
-type HeaderHandler func(headerData []byte) (bodyLen int, err error)
-type OnConnect func(client *Client)
+type HeaderHandler func(headerData []byte, ctx *Context) (bodyLen int, err error)
+type OnConnect func(ctx *Context)
 
 type Config struct {
 	ListenIP      string
 	Port          int
 	HeaderHandler HeaderHandler
-	BodyHandler   func(bodyData []byte, client *Client) error
+	BodyHandler   func(bodyData []byte, ctx *Context) error
 	OnConnect     OnConnect
-	OnError       func(err error, client *Client)
+	OnError       func(err error, ctx *Context)
 	HeaderLen     int
 }
 

@@ -70,10 +70,14 @@ func (c *Client) Run() {
 }
 
 func (c *Client) readLoop() {
+	ctx := &Context{
+		client: c,
+	}
+
 	defer func() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
-			c.core.config.OnError(err_, c)
+			c.core.config.OnError(err_, ctx)
 		}
 	}()
 	n, err := c.conn.Read(c.headerBuff)
@@ -85,7 +89,7 @@ func (c *Client) readLoop() {
 		panic(errors.New("header len error"))
 	}
 
-	bodyLen, err := c.core.config.HeaderHandler(c.headerBuff)
+	bodyLen, err := c.core.config.HeaderHandler(c.headerBuff, ctx)
 
 	buff := make([]byte, bodyLen)
 	n, err = c.conn.Read(buff)
@@ -97,7 +101,7 @@ func (c *Client) readLoop() {
 		panic(errors.New("body len error"))
 	}
 
-	err = c.core.config.BodyHandler(buff, c)
+	err = c.core.config.BodyHandler(buff, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +111,7 @@ func (c *Client) writeLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
-			c.core.config.OnError(err_, c)
+			c.core.config.OnError(err_, nil)
 		}
 	}()
 
