@@ -69,6 +69,16 @@ func (c *Client) Run() {
 	wg.Wait()
 }
 
+func (c *Client) onError(err error, ctx *Context) {
+	defer func() {
+		if err := recover(); err != nil {
+			c.core.logger.Warn(err)
+		}
+	}()
+
+	c.core.config.OnError(err, ctx)
+}
+
 func (c *Client) readLoop() {
 	ctx := &Context{
 		Client: c,
@@ -77,7 +87,7 @@ func (c *Client) readLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
-			c.core.config.OnError(err_, ctx)
+			c.onError(err_, ctx)
 		}
 	}()
 	n, err := c.conn.Read(c.headerBuff)
@@ -111,7 +121,7 @@ func (c *Client) writeLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
-			c.core.config.OnError(err_, nil)
+			c.onError(err_, nil)
 		}
 	}()
 
