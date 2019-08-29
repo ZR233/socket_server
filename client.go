@@ -105,6 +105,9 @@ func (c *Client) readLoop() {
 	}
 
 	bodyLen, err := c.core.config.HeaderHandler(c.headerBuff, ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	buff := make([]byte, bodyLen)
 	n, err = c.conn.Read(buff)
