@@ -19,6 +19,7 @@ type Client struct {
 	headerBuff []byte
 	stopChan   chan bool
 	Stop       bool
+	ctx        *Context
 }
 
 func newClient(conn net.Conn, core *Core) *Client {
@@ -26,6 +27,7 @@ func newClient(conn net.Conn, core *Core) *Client {
 		conn: conn,
 		core: core,
 	}
+	c.ctx = &Context{Client: c}
 	c.stopChan = make(chan bool, 1)
 	c.writeChan = make(chan []byte, 10)
 	headerLen := c.core.config.HeaderLen
@@ -43,6 +45,8 @@ func (c *Client) Run() {
 		close(c.writeChan)
 		close(c.stopChan)
 		c.core = nil
+		c.ctx.Client = nil
+		c.ctx = nil
 	}()
 
 	wg := sync.WaitGroup{}
@@ -92,6 +96,8 @@ func (c *Client) readLoop() {
 			err_ := err.(error)
 			c.onError(err_, ctx)
 		}
+
+		c.ctx.Keys = nil
 	}()
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
