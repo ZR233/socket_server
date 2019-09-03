@@ -44,7 +44,9 @@ func newClient(conn net.Conn, core *Core) *Client {
 func (c *Client) Id() uint32 {
 	return c.id
 }
-
+func (c *Client) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
 func (c *Client) Run() {
 	defer func() {
 		close(c.writeChan)

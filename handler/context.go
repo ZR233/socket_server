@@ -5,6 +5,7 @@
 package handler
 
 import (
+	"net"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type Client interface {
 	Write(data []byte)
 	Close() error
 	Id() uint32
+	RemoteAddr() net.Addr
 }
 
 type Context struct {
