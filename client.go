@@ -83,7 +83,7 @@ func (c *Client) onError(err error, ctx *Context) {
 		}
 	}()
 
-	c.core.config.OnError(err, ctx)
+	c.core.config.Handler.OnError(err, ctx)
 }
 
 func (c *Client) readLoop() {
@@ -110,7 +110,7 @@ func (c *Client) readLoop() {
 		panic(errors.New("header len error"))
 	}
 
-	bodyLen, err := c.core.config.HeaderHandler(c.headerBuff, ctx)
+	bodyLen, err := c.core.config.Handler.HeaderHandler(c.headerBuff, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +125,7 @@ func (c *Client) readLoop() {
 		panic(errors.New("body len error"))
 	}
 
-	err = c.core.config.BodyHandler(buff, ctx)
+	err = c.core.config.Handler.BodyHandler(buff, ctx)
 	if err != nil {
 		panic(err)
 	}

@@ -14,13 +14,10 @@ type HeaderHandler func(headerData []byte, ctx *Context) (bodyLen int, err error
 type OnConnect func(client *Client)
 
 type Config struct {
-	ListenIP      string
-	Port          int
-	HeaderHandler HeaderHandler
-	BodyHandler   func(bodyData []byte, ctx *Context) error
-	OnConnect     OnConnect
-	OnError       func(err error, ctx *Context)
-	HeaderLen     int
+	ListenIP  string
+	Port      int
+	Handler   Handler
+	HeaderLen int
 }
 
 type Logger interface {
@@ -65,7 +62,7 @@ func (c *Core) Run() {
 		client := newClient(conn, c)
 		id := atomic.AddUint32(c.idIter, 1)
 		client.Id = id
-		c.config.OnConnect(client)
+		c.config.Handler.OnConnect(client)
 		if !client.Stop {
 			go client.Run()
 		}
