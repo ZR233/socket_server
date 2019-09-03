@@ -87,7 +87,6 @@ func (c *Client) onError(err error, ctx *handler.Context) {
 			c.core.logger.Warn(err)
 		}
 	}()
-
 	c.core.config.Handler.OnError(err, ctx)
 }
 
