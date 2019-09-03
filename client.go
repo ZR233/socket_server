@@ -7,6 +7,7 @@ package socket_server
 import (
 	"errors"
 	"fmt"
+	"github.com/ZR233/socket_server/handler"
 	"net"
 	"sync"
 )
@@ -14,12 +15,12 @@ import (
 type Client struct {
 	conn       net.Conn
 	core       *Core
-	Id         uint32
+	id         uint32
 	writeChan  chan []byte
 	headerBuff []byte
 	stopChan   chan bool
 	Stop       bool
-	ctx        *Context
+	ctx        *handler.Context
 }
 
 func newClient(conn net.Conn, core *Core) *Client {
@@ -27,7 +28,7 @@ func newClient(conn net.Conn, core *Core) *Client {
 		conn: conn,
 		core: core,
 	}
-	c.ctx = &Context{Client: c}
+	c.ctx = &handler.Context{Client: c}
 	c.stopChan = make(chan bool, 1)
 	c.writeChan = make(chan []byte, 10)
 	headerLen := c.core.config.HeaderLen
@@ -38,6 +39,10 @@ func newClient(conn net.Conn, core *Core) *Client {
 	}()
 
 	return c
+}
+
+func (c *Client) Id() uint32 {
+	return c.id
 }
 
 func (c *Client) Run() {
@@ -76,7 +81,7 @@ func (c *Client) Run() {
 	wg.Wait()
 }
 
-func (c *Client) onError(err error, ctx *Context) {
+func (c *Client) onError(err error, ctx *handler.Context) {
 	defer func() {
 		if err := recover(); err != nil {
 			c.core.logger.Warn(err)
@@ -87,7 +92,7 @@ func (c *Client) onError(err error, ctx *Context) {
 }
 
 func (c *Client) readLoop() {
-	ctx := &Context{
+	ctx := &handler.Context{
 		Client: c,
 	}
 

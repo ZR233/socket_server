@@ -2,12 +2,20 @@
 @Time : 2019-08-29 10:50
 @Author : zr
 */
-package socket_server
+package handler
 
-import "time"
+import (
+	"time"
+)
+
+type Client interface {
+	Write(data []byte)
+	Close() error
+	Id() uint32
+}
 
 type Context struct {
-	Client *Client
+	Client Client
 	Keys   map[string]interface{}
 }
 
