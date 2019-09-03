@@ -15,10 +15,9 @@ type HeaderHandler func(headerData []byte, ctx *handler.Context) (bodyLen int, e
 type OnConnect func(client *Client)
 
 type Config struct {
-	ListenIP  string
-	Port      int
-	Handler   handler.Handler
-	HeaderLen int
+	ListenIP string
+	Port     int
+	Handler  handler.Handler
 }
 
 type Logger interface {

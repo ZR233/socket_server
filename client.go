@@ -31,7 +31,7 @@ func newClient(conn net.Conn, core *Core) *Client {
 	c.ctx = &handler.Context{Client: c}
 	c.stopChan = make(chan bool, 1)
 	c.writeChan = make(chan []byte, 10)
-	headerLen := c.core.config.HeaderLen
+	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
 	c.Stop = false
 	go func() {
@@ -110,7 +110,7 @@ func (c *Client) readLoop() {
 		return
 	}
 
-	if n != c.core.config.HeaderLen {
+	if n != c.core.config.Handler.HeaderLen() {
 		panic(errors.New("header len error"))
 	}
 
