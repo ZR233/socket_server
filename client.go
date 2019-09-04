@@ -6,7 +6,6 @@ package socket_server
 
 import (
 	"errors"
-	"fmt"
 	"github.com/ZR233/socket_server/handler"
 	"net"
 	"sync"
@@ -92,7 +91,9 @@ func (c *Client) onError(err error, ctx *handler.Context) {
 	}()
 	c.core.config.Handler.OnError(err, ctx)
 }
-
+func (c *Client) Stopped() bool {
+	return c.Stop
+}
 func (c *Client) readLoop() {
 	ctx := &handler.Context{
 		Client: c,
@@ -164,7 +165,7 @@ func (c *Client) Write(data []byte) {
 }
 
 func (c *Client) Close() error {
-	c.core.logger.Debug(fmt.Sprintf("client (%d) close", c.Id))
+
 	c.core.deleteClient(c)
 	select {
 	case c.stopChan <- true:

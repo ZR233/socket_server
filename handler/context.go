@@ -16,6 +16,7 @@ type Client interface {
 	RemoteAddr() net.Addr
 	SetFields(interface{})
 	GetFields() interface{}
+	Stopped() bool
 }
 
 type Context struct {
