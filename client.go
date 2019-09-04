@@ -175,3 +175,10 @@ func (c *Client) Close() error {
 		return errors.New("closed")
 	}
 }
+
+func (c *Client) SetFields(fields interface{}) {
+	c.Fields = fields
+}
+func (c *Client) GetFields() interface{} {
+	return c.Fields
+}

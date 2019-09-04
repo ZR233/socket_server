@@ -14,6 +14,8 @@ type Client interface {
 	Close() error
 	Id() uint32
 	RemoteAddr() net.Addr
+	SetFields(interface{})
+	GetFields() interface{}
 }
 
 type Context struct {
