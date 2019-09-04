@@ -33,6 +33,10 @@ type Core struct {
 	idIter     *uint32
 }
 
+func (c *Core) GetClients() map[uint32]*Client {
+	return c.clientPool
+}
+
 func NewCore(config *Config) *Core {
 	idIter := uint32(0)
 

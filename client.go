@@ -21,6 +21,7 @@ type Client struct {
 	stopChan   chan bool
 	Stop       bool
 	ctx        *handler.Context
+	Fields     interface{}
 }
 
 func newClient(conn net.Conn, core *Core) *Client {
