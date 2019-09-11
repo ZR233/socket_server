@@ -74,5 +74,7 @@ func (c *Core) Run() {
 }
 
 func (c *Core) deleteClient(client *Client) {
-	delete(c.clientPool, client.id)
+	if client != nil {
+		delete(c.clientPool, client.id)
+	}
 }
