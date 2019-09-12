@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/ZR233/socket_server/handler"
 	"net"
+	"sync"
 	"sync/atomic"
 )
 
@@ -27,10 +28,11 @@ type Logger interface {
 }
 
 type Core struct {
-	config     *Config
-	clientPool map[uint32]*Client
-	logger     Logger
-	idIter     *uint32
+	config       *Config
+	clientPool   map[uint32]*Client
+	clientPoolMu sync.Mutex
+	logger       Logger
+	idIter       *uint32
 }
 
 func (c *Core) GetClients() map[uint32]*Client {
@@ -66,15 +68,29 @@ func (c *Core) Run() {
 		client := newClient(conn, c)
 		id := atomic.AddUint32(c.idIter, 1)
 		client.id = id
+
 		c.config.Handler.OnConnect(client)
-		if !client.Stop {
+		if !client.Stopped() {
+			c.addClient(client)
 			go client.Run()
 		}
 	}
 }
 
+func (c *Core) addClient(client *Client) {
+	c.clientPoolMu.Lock()
+	defer c.clientPoolMu.Unlock()
+
+	c.clientPool[client.id] = client
+}
+
 func (c *Core) deleteClient(client *Client) {
+	c.clientPoolMu.Lock()
+	defer c.clientPoolMu.Unlock()
+
 	if client != nil {
-		delete(c.clientPool, client.id)
+		if _, ok := c.clientPool[client.id]; ok {
+			delete(c.clientPool, client.id)
+		}
 	}
 }

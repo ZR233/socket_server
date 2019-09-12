@@ -11,6 +11,14 @@ import (
 	"sync"
 )
 
+type ClientState int
+
+const (
+	_ ClientState = iota
+	ClientStateRunning
+	ClientStateStopping
+)
+
 type Client struct {
 	conn       net.Conn
 	core       *Core
@@ -18,25 +26,30 @@ type Client struct {
 	writeChan  chan []byte
 	headerBuff []byte
 	stopChan   chan bool
-	Stop       bool
 	ctx        *handler.Context
 	Fields     interface{}
+	state      ClientState
+}
+
+func (c *Client) setState(state ClientState) {
+	c.state = state
+}
+
+func (c *Client) GetState() (state ClientState) {
+	return c.state
 }
 
 func newClient(conn net.Conn, core *Core) *Client {
 	c := &Client{
-		conn: conn,
-		core: core,
+		conn:  conn,
+		core:  core,
+		state: ClientStateRunning,
 	}
 	c.ctx = &handler.Context{Client: c}
 	c.stopChan = make(chan bool, 1)
 	c.writeChan = make(chan []byte, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
-	c.Stop = false
-	go func() {
-		c.Stop = <-c.stopChan
-	}()
 
 	return c
 }
@@ -49,6 +62,7 @@ func (c *Client) RemoteAddr() net.Addr {
 }
 func (c *Client) Run() {
 	defer func() {
+		c.core.deleteClient(c)
 		close(c.writeChan)
 		close(c.stopChan)
 		c.core = nil
@@ -61,7 +75,7 @@ func (c *Client) Run() {
 	go func() {
 		defer wg.Done()
 		for {
-			if !c.Stop {
+			if c.state == ClientStateRunning {
 				c.readLoop()
 			} else {
 				break
@@ -72,7 +86,7 @@ func (c *Client) Run() {
 	go func() {
 		defer wg.Done()
 		for {
-			if !c.Stop {
+			if c.state == ClientStateRunning {
 				c.writeLoop()
 			} else {
 				break
@@ -81,6 +95,7 @@ func (c *Client) Run() {
 	}()
 
 	wg.Wait()
+
 }
 
 func (c *Client) onError(err error, ctx *handler.Context) {
@@ -92,7 +107,7 @@ func (c *Client) onError(err error, ctx *handler.Context) {
 	c.core.config.Handler.OnError(err, ctx)
 }
 func (c *Client) Stopped() bool {
-	return c.Stop
+	return c.state == ClientStateStopping
 }
 func (c *Client) readLoop() {
 	ctx := &handler.Context{
@@ -106,6 +121,8 @@ func (c *Client) readLoop() {
 		}
 
 		c.ctx.Keys = nil
+	_:
+		c.Close()
 	}()
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
@@ -145,6 +162,8 @@ func (c *Client) writeLoop() {
 			err_ := err.(error)
 			c.onError(err_, nil)
 		}
+	_:
+		c.Close()
 	}()
 
 	data := <-c.writeChan
@@ -165,16 +184,8 @@ func (c *Client) Write(data []byte) {
 }
 
 func (c *Client) Close() error {
-
-	c.core.deleteClient(c)
-	select {
-	case c.stopChan <- true:
-	_:
-		c.conn.Close()
-		return nil
-	default:
-		return errors.New("closed")
-	}
+	c.setState(ClientStateStopping)
+	return c.conn.Close()
 }
 
 func (c *Client) SetFields(fields interface{}) {
