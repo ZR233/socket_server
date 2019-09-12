@@ -67,7 +67,7 @@ func (c *Core) Run() {
 			c.logger.Warn(err)
 			continue
 		}
-		client := newClient(conn, c)
+		client := newClient(conn, c, c.logger)
 		id := atomic.AddUint32(c.idIter, 1)
 		client.id = id
 

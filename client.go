@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/ZR233/socket_server/handler"
 	"net"
+	"strconv"
 	"sync"
 )
 
@@ -29,6 +30,7 @@ type Client struct {
 	ctx        *handler.Context
 	Fields     interface{}
 	state      ClientState
+	logger     Logger
 }
 
 func (c *Client) setState(state ClientState) {
@@ -39,11 +41,12 @@ func (c *Client) GetState() (state ClientState) {
 	return c.state
 }
 
-func newClient(conn net.Conn, core *Core) *Client {
+func newClient(conn net.Conn, core *Core, logger Logger) *Client {
 	c := &Client{
-		conn:  conn,
-		core:  core,
-		state: ClientStateRunning,
+		conn:   conn,
+		core:   core,
+		state:  ClientStateRunning,
+		logger: logger,
 	}
 	c.ctx = &handler.Context{Client: c}
 	c.stopChan = make(chan bool, 1)
@@ -177,6 +180,7 @@ func (c *Client) writeLoop() {
 	if n != len(data) {
 		panic(errors.New("write len error"))
 	}
+	c.logger.Debug("send:", strconv.Itoa(n))
 }
 
 func (c *Client) Write(data []byte) {
