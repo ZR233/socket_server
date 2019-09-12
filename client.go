@@ -122,11 +122,12 @@ func (c *Client) readLoop() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
 			c.onError(err_, ctx)
+		_:
+			c.Close()
 		}
 
 		c.ctx.Keys = nil
-	_:
-		c.Close()
+
 	}()
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
@@ -165,9 +166,10 @@ func (c *Client) writeLoop() {
 		if err := recover(); err != nil {
 			err_ := err.(error)
 			c.onError(err_, nil)
+		_:
+			c.Close()
 		}
-	_:
-		c.Close()
+
 	}()
 	c.logger.Debug("wait for send data")
 
