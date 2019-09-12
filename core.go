@@ -42,7 +42,9 @@ func (c *Core) GetClients() map[uint32]*Client {
 func NewCore(config *Config) *Core {
 	idIter := uint32(0)
 
-	c := &Core{}
+	c := &Core{
+		clientPool: make(map[uint32]*Client),
+	}
 	c.config = config
 	c.idIter = &idIter
 	return c
