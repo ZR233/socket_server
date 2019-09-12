@@ -6,6 +6,7 @@ package socket_server
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ZR233/socket_server/handler"
 	"net"
 	"strconv"
@@ -168,9 +169,10 @@ func (c *Client) writeLoop() {
 	_:
 		c.Close()
 	}()
+	c.logger.Debug("wait for send data")
 
 	data := <-c.writeChan
-
+	c.logger.Debug("got send data")
 	n, err := c.conn.Write(data)
 	if err != nil {
 	_:
@@ -180,14 +182,16 @@ func (c *Client) writeLoop() {
 	if n != len(data) {
 		panic(errors.New("write len error"))
 	}
-	c.logger.Debug("send:", strconv.Itoa(n))
+	c.logger.Debug("send success:", strconv.Itoa(n))
 }
 
 func (c *Client) Write(data []byte) {
+	c.logger.Debug(fmt.Sprintf("send len(%d)", len(data)))
 	c.writeChan <- data
 }
 
 func (c *Client) Close() error {
+	c.logger.Debug(fmt.Sprintf("close(%d)", c.id))
 	c.setState(ClientStateStopping)
 	return c.conn.Close()
 }
