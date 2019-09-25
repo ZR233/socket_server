@@ -213,10 +213,12 @@ func (c *Client) Write(data []byte) {
 func (c *Client) Close() error {
 	c.logger.Debug(fmt.Sprintf("close(%d)", c.id))
 	c.stateMu.Lock()
-	defer c.stateMu.Unlock()
 	if c.state == ClientStateRunning {
 		c.setState(ClientStateStopping)
+		c.stateMu.Unlock()
 		c.goroutineCancel()
+	} else {
+		c.stateMu.Unlock()
 	}
 
 	return c.conn.Close()
