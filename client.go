@@ -5,6 +5,7 @@
 package socket_server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/ZR233/socket_server/handler"
@@ -19,19 +20,23 @@ const (
 	_ ClientState = iota
 	ClientStateRunning
 	ClientStateStopping
+	ClientStateStopped
 )
 
 type Client struct {
-	conn       net.Conn
-	core       *Core
-	id         uint32
-	writeChan  chan []byte
-	headerBuff []byte
-	stopChan   chan bool
-	ctx        *handler.Context
-	Fields     interface{}
-	state      ClientState
-	logger     Logger
+	conn            net.Conn
+	core            *Core
+	id              uint32
+	writeChan       chan []byte
+	headerBuff      []byte
+	stopChan        chan bool
+	ctx             *handler.Context
+	Fields          interface{}
+	state           ClientState
+	stateMu         *sync.Mutex
+	goroutineCtx    context.Context
+	goroutineCancel context.CancelFunc
+	logger          Logger
 }
 
 func (c *Client) setState(state ClientState) {
@@ -44,11 +49,16 @@ func (c *Client) GetState() (state ClientState) {
 
 func newClient(conn net.Conn, core *Core, logger Logger) *Client {
 	c := &Client{
-		conn:   conn,
-		core:   core,
-		state:  ClientStateRunning,
-		logger: logger,
+		conn:    conn,
+		core:    core,
+		state:   ClientStateRunning,
+		stateMu: &sync.Mutex{},
+		logger:  logger,
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c.goroutineCtx = ctx
+	c.goroutineCancel = cancel
+
 	c.ctx = &handler.Context{Client: c}
 	c.stopChan = make(chan bool, 1)
 	c.writeChan = make(chan []byte, 10)
@@ -111,7 +121,7 @@ func (c *Client) onError(err error, ctx *handler.Context) {
 	c.core.config.Handler.OnError(err, ctx)
 }
 func (c *Client) Stopped() bool {
-	return c.state == ClientStateStopping
+	return c.state >= ClientStateStopping
 }
 func (c *Client) readLoop() {
 	ctx := &handler.Context{
@@ -173,7 +183,15 @@ func (c *Client) writeLoop() {
 	}()
 	c.logger.Debug("wait for send data")
 
-	data := <-c.writeChan
+	var data []byte
+	select {
+	case data = <-c.writeChan:
+	case <-c.goroutineCtx.Done():
+	_:
+		c.Close()
+		return
+	}
+
 	c.logger.Debug("got send data")
 	n, err := c.conn.Write(data)
 	if err != nil {
@@ -194,7 +212,13 @@ func (c *Client) Write(data []byte) {
 
 func (c *Client) Close() error {
 	c.logger.Debug(fmt.Sprintf("close(%d)", c.id))
-	c.setState(ClientStateStopping)
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	if c.state == ClientStateRunning {
+		c.setState(ClientStateStopping)
+		c.goroutineCancel()
+	}
+
 	return c.conn.Close()
 }
 
