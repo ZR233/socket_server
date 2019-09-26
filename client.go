@@ -144,16 +144,12 @@ func (c *Client) readLoop() {
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
-	_:
-		c.Close()
-		return
+		panic(err)
 	}
 
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
-	_:
-		c.Close()
-		return
+		panic(err)
 	}
 
 	if n != c.core.config.Handler.HeaderLen() {
