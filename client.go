@@ -146,7 +146,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-
+	c.logger.Debug("read header")
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 		panic(err)
@@ -166,7 +166,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-
+	c.logger.Debug("read body")
 	n, err = c.conn.Read(buff)
 	if err != nil {
 		panic(err)
