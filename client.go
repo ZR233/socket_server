@@ -146,7 +146,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-	c.logger.Debug("read header")
+	c.logger.Debug("read header, time out:", c.tcpDeadLine, "s")
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 		panic(err)
