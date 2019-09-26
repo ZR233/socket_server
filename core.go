@@ -74,9 +74,8 @@ func (c *Core) Run() {
 			c.logger.Warn(err)
 			continue
 		}
-		client := newClient(conn, c, c.logger, c.netDeadLine)
 		id := atomic.AddUint32(c.idIter, 1)
-		client.id = id
+		client := newClient(conn, id, c, c.logger, c.netDeadLine)
 
 		c.config.Handler.OnConnect(client)
 		if !client.Stopped() {

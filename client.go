@@ -49,8 +49,9 @@ func (c *Client) GetState() (state ClientState) {
 	return c.state
 }
 
-func newClient(conn net.Conn, core *Core, logger Logger, tcpDeadLine time.Duration) *Client {
+func newClient(conn net.Conn, id uint32, core *Core, logger Logger, tcpDeadLine time.Duration) *Client {
 	c := &Client{
+		id:          id,
 		conn:        conn,
 		core:        core,
 		state:       ClientStateRunning,
@@ -67,7 +68,7 @@ func newClient(conn net.Conn, core *Core, logger Logger, tcpDeadLine time.Durati
 	c.writeChan = make(chan []byte, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
-
+	c.logger.Debug(fmt.Sprintf("(%d)create client", id))
 	return c
 }
 
@@ -79,6 +80,7 @@ func (c *Client) RemoteAddr() net.Addr {
 }
 func (c *Client) Run() {
 	defer func() {
+		c.logger.Debug(fmt.Sprintf("(%d)delete", c.id))
 		c.core.deleteClient(c)
 		close(c.writeChan)
 		close(c.stopChan)
@@ -118,7 +120,7 @@ func (c *Client) Run() {
 func (c *Client) onError(err error, ctx *handler.Context) {
 	defer func() {
 		if err := recover(); err != nil {
-			c.core.logger.Warn(err)
+			c.core.logger.Warn(fmt.Sprintf("(%d)err:%s", c.id, err))
 		}
 	}()
 	c.core.config.Handler.OnError(err, ctx)
@@ -147,7 +149,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-	c.logger.Debug("read header, time out:", c.tcpDeadLine)
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine)
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 		panic(err)
@@ -167,7 +169,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-	c.logger.Debug("read body")
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read body")
 	n, err = c.conn.Read(buff)
 	if err != nil {
 		panic(err)
@@ -193,7 +195,7 @@ func (c *Client) writeLoop() {
 		}
 
 	}()
-	c.logger.Debug("wait for send data")
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "wait for send data")
 
 	var data []byte
 	select {
@@ -204,7 +206,7 @@ func (c *Client) writeLoop() {
 		return
 	}
 
-	c.logger.Debug("got send data")
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "got send data")
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
 		panic(err)
@@ -217,16 +219,16 @@ func (c *Client) writeLoop() {
 	if n != len(data) {
 		panic(errors.New("write len error"))
 	}
-	c.logger.Debug("send success:", strconv.Itoa(n))
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "send success:", strconv.Itoa(n))
 }
 
 func (c *Client) Write(data []byte) {
-	c.logger.Debug(fmt.Sprintf("send len(%d)", len(data)))
+	c.logger.Debug(fmt.Sprintf("(%d)send len(%d)", c.id, len(data)))
 	c.writeChan <- data
 }
 
 func (c *Client) Close() error {
-	c.logger.Debug(fmt.Sprintf("close(%d)", c.id))
+	c.logger.Debug(fmt.Sprintf("(%d)close signal", c.id))
 	c.stateMu.Lock()
 	if c.state == ClientStateRunning {
 		c.setState(ClientStateStopping)
