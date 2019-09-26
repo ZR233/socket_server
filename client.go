@@ -168,9 +168,7 @@ func (c *Client) readLoop() {
 	buff := make([]byte, bodyLen)
 	err = c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
-	_:
-		c.Close()
-		return
+		panic(err)
 	}
 
 	n, err = c.conn.Read(buff)
@@ -212,16 +210,12 @@ func (c *Client) writeLoop() {
 	c.logger.Debug("got send data")
 	err := c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
-	_:
-		c.Close()
-		return
+		panic(err)
 	}
 
 	n, err := c.conn.Write(data)
 	if err != nil {
-	_:
-		c.Close()
-		return
+		panic(err)
 	}
 	if n != len(data) {
 		panic(errors.New("write len error"))
