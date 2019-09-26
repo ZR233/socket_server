@@ -10,6 +10,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type HeaderHandler func(headerData []byte, ctx *handler.Context) (bodyLen int, err error)
@@ -33,6 +34,7 @@ type Core struct {
 	clientPoolMu sync.Mutex
 	logger       Logger
 	idIter       *uint32
+	netDeadLine  time.Duration
 }
 
 func (c *Core) GetClients() map[uint32]*Client {
@@ -43,11 +45,16 @@ func NewCore(config *Config) *Core {
 	idIter := uint32(0)
 
 	c := &Core{
-		clientPool: make(map[uint32]*Client),
+		clientPool:  make(map[uint32]*Client),
+		netDeadLine: time.Second * 30,
 	}
 	c.config = config
 	c.idIter = &idIter
 	return c
+}
+
+func (c *Core) SetNetDeadLine(duration time.Duration) {
+	c.netDeadLine = duration
 }
 
 func (c *Core) SetLogger(logger Logger) {
@@ -67,7 +74,7 @@ func (c *Core) Run() {
 			c.logger.Warn(err)
 			continue
 		}
-		client := newClient(conn, c, c.logger)
+		client := newClient(conn, c, c.logger, c.netDeadLine)
 		id := atomic.AddUint32(c.idIter, 1)
 		client.id = id
 

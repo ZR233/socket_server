@@ -12,6 +12,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type ClientState int
@@ -37,6 +38,7 @@ type Client struct {
 	goroutineCtx    context.Context
 	goroutineCancel context.CancelFunc
 	logger          Logger
+	tcpDeadLine     time.Duration
 }
 
 func (c *Client) setState(state ClientState) {
@@ -47,7 +49,7 @@ func (c *Client) GetState() (state ClientState) {
 	return c.state
 }
 
-func newClient(conn net.Conn, core *Core, logger Logger) *Client {
+func newClient(conn net.Conn, core *Core, logger Logger, tcpDeadLine time.Duration) *Client {
 	c := &Client{
 		conn:    conn,
 		core:    core,
@@ -139,6 +141,14 @@ func (c *Client) readLoop() {
 		c.ctx.Keys = nil
 
 	}()
+
+	err := c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
+	if err != nil {
+	_:
+		c.Close()
+		return
+	}
+
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 	_:
@@ -156,6 +166,13 @@ func (c *Client) readLoop() {
 	}
 
 	buff := make([]byte, bodyLen)
+	err = c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
+	if err != nil {
+	_:
+		c.Close()
+		return
+	}
+
 	n, err = c.conn.Read(buff)
 	if err != nil {
 		panic(err)
@@ -193,6 +210,13 @@ func (c *Client) writeLoop() {
 	}
 
 	c.logger.Debug("got send data")
+	err := c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
+	if err != nil {
+	_:
+		c.Close()
+		return
+	}
+
 	n, err := c.conn.Write(data)
 	if err != nil {
 	_:
