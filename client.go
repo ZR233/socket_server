@@ -87,6 +87,7 @@ func (c *Client) Run() {
 		c.core = nil
 		c.ctx.Client = nil
 		c.ctx = nil
+		c.state = ClientStateStopped
 	}()
 
 	wg := sync.WaitGroup{}
