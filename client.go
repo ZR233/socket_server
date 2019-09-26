@@ -51,11 +51,12 @@ func (c *Client) GetState() (state ClientState) {
 
 func newClient(conn net.Conn, core *Core, logger Logger, tcpDeadLine time.Duration) *Client {
 	c := &Client{
-		conn:    conn,
-		core:    core,
-		state:   ClientStateRunning,
-		stateMu: &sync.Mutex{},
-		logger:  logger,
+		conn:        conn,
+		core:        core,
+		state:       ClientStateRunning,
+		stateMu:     &sync.Mutex{},
+		logger:      logger,
+		tcpDeadLine: tcpDeadLine,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.goroutineCtx = ctx
@@ -146,7 +147,7 @@ func (c *Client) readLoop() {
 	if err != nil {
 		panic(err)
 	}
-	c.logger.Debug("read header, time out:", c.tcpDeadLine, "s")
+	c.logger.Debug("read header, time out:", c.tcpDeadLine)
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 		panic(err)
