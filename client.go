@@ -170,7 +170,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 	dataPart := make([]byte, bodyLen)
 	readLen := 0
 	breakFlag := false
-
+	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read body")
 	timer := time.NewTimer(c.tcpDeadLine)
 	go func() {
 		<-timer.C
@@ -190,7 +190,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 		if err != nil {
 			panic(err)
 		}
-		c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read body")
+
 		n, err := c.conn.Read(dataPart)
 		if err != nil {
 			panic(err)
