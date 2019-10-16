@@ -186,7 +186,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 			break
 		}
 
-		err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
+		err := c.conn.SetReadDeadline(time.Now().Add(time.Second))
 		if err != nil {
 			panic(err)
 		}
