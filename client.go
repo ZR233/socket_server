@@ -171,8 +171,9 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 	readLen := 0
 	breakFlag := false
 
+	timer := time.NewTimer(c.tcpDeadLine)
 	go func() {
-		<-time.After(c.tcpDeadLine)
+		<-timer.C
 		breakFlag = true
 	}()
 
@@ -181,6 +182,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 			break
 		}
 		if readLen == bodyLen {
+			timer.Reset(0)
 			break
 		}
 
