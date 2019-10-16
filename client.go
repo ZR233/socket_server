@@ -167,7 +167,7 @@ func (c *Client) readLoopGetBodyLen(ctx *handler.Context) (bodyLen int) {
 }
 
 func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
-
+	dataPart := make([]byte, bodyLen)
 	readLen := 0
 	breakFlag := false
 
@@ -186,7 +186,6 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 			break
 		}
 
-		var dataPart []byte
 		err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
 		if err != nil {
 			panic(err)
@@ -197,7 +196,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 			panic(err)
 		}
 		readLen += n
-		data = append(data, dataPart...)
+		data = append(data, dataPart[0:n]...)
 	}
 
 	if readLen != bodyLen {
