@@ -165,38 +165,38 @@ func (c *Client) readLoopGetBodyLen(ctx *handler.Context) (bodyLen int) {
 	}
 	return
 }
+func newDateBuff(len int) []byte {
+	return make([]byte, len)
+}
 
 func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
-	dataPart := make([]byte, bodyLen)
+	if bodyLen == 0 {
+		return
+	}
+	expireAt := time.Now().Add(c.tcpDeadLine)
+	data = newDateBuff(bodyLen)
+
 	readLen := 0
-	breakFlag := false
 	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read body")
-	timer := time.NewTimer(c.tcpDeadLine)
-	go func() {
-		<-timer.C
-		breakFlag = true
-	}()
 
 	for {
-		if breakFlag {
+		if expireAt.Sub(time.Now()) <= 0 {
 			break
 		}
 		if readLen == bodyLen {
-			timer.Reset(0)
 			break
 		}
 
-		err := c.conn.SetReadDeadline(time.Now().Add(time.Second))
+		err := c.conn.SetReadDeadline(expireAt)
 		if err != nil {
 			panic(err)
 		}
 
-		n, err := c.conn.Read(dataPart)
+		n, err := c.conn.Read(data[readLen:])
 		if err != nil {
 			panic(err)
 		}
 		readLen += n
-		data = append(data, dataPart[0:n]...)
 	}
 
 	if readLen != bodyLen {
