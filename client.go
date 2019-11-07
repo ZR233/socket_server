@@ -169,6 +169,14 @@ func newDateBuff(len int) []byte {
 	return make([]byte, len)
 }
 
+func (c *Client) connRead(data []byte) (n int) {
+	n, err := c.conn.Read(data)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
 func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 	if bodyLen == 0 {
 		return
@@ -191,11 +199,8 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 		if err != nil {
 			panic(err)
 		}
+		n := c.connRead(data[readLen:])
 
-		n, err := c.conn.Read(data[readLen:])
-		if err != nil {
-			panic(err)
-		}
 		readLen += n
 	}
 
