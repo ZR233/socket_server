@@ -7,6 +7,7 @@ package socket_server
 import (
 	"fmt"
 	"github.com/ZR233/socket_server/handler"
+	"github.com/sirupsen/logrus"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -22,17 +23,10 @@ type Config struct {
 	Handler  handler.Handler
 }
 
-type Logger interface {
-	Warn(msg ...interface{})
-	Info(msg ...interface{})
-	Debug(msg ...interface{})
-}
-
 type Core struct {
 	config       *Config
 	clientPool   map[uint32]*Client
 	clientPoolMu sync.Mutex
-	logger       Logger
 	idIter       *uint32
 	netDeadLine  time.Duration
 }
@@ -57,10 +51,6 @@ func (c *Core) SetNetDeadLine(duration time.Duration) {
 	c.netDeadLine = duration
 }
 
-func (c *Core) SetLogger(logger Logger) {
-	c.logger = logger
-}
-
 func (c *Core) Run() {
 	address := fmt.Sprintf("%s:%d", c.config.ListenIP, c.config.Port)
 	tcpListen, err := net.Listen("tcp", address)
@@ -71,11 +61,11 @@ func (c *Core) Run() {
 	for {
 		conn, err := tcpListen.Accept()
 		if err != nil {
-			c.logger.Warn(err)
+			logrus.Warn(err)
 			continue
 		}
 		id := atomic.AddUint32(c.idIter, 1)
-		client := newClient(conn, id, c, c.logger, c.netDeadLine)
+		client := newClient(conn, id, c, c.netDeadLine)
 
 		c.config.Handler.OnConnect(client)
 		if !client.Stopped() {

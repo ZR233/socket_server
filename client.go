@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ZR233/socket_server/handler"
+	"github.com/sirupsen/logrus"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -24,21 +26,49 @@ const (
 	ClientStateStopped
 )
 
+type CommandWrite struct {
+	client *Client
+	data   []byte
+}
+
+func (c *CommandWrite) Exec() (err error) {
+	return c.client.Write(c.data)
+}
+
+type CommandClose struct {
+	client *Client
+}
+
+func (c *CommandClose) Exec() (err error) {
+	return c.client.Close()
+}
+
 type Client struct {
-	conn            net.Conn
-	core            *Core
-	id              uint32
-	writeChan       chan []byte
+	conn net.Conn
+	core *Core
+	id   uint32
+	//writeChan       chan []byte
+	cmdChan         chan handler.Command
 	headerBuff      []byte
-	stopChan        chan bool
 	ctx             *handler.Context
 	Fields          interface{}
 	state           ClientState
 	stateMu         *sync.Mutex
 	goroutineCtx    context.Context
 	goroutineCancel context.CancelFunc
-	logger          Logger
 	tcpDeadLine     time.Duration
+}
+
+func (c *Client) NewCommandWrite(data []byte) *CommandWrite {
+	return &CommandWrite{
+		client: c,
+		data:   data,
+	}
+}
+func (c *Client) NewCommandClose() *CommandClose {
+	return &CommandClose{
+		client: c,
+	}
 }
 
 func (c *Client) setState(state ClientState) {
@@ -49,14 +79,13 @@ func (c *Client) GetState() (state ClientState) {
 	return c.state
 }
 
-func newClient(conn net.Conn, id uint32, core *Core, logger Logger, tcpDeadLine time.Duration) *Client {
+func newClient(conn net.Conn, id uint32, core *Core, tcpDeadLine time.Duration) *Client {
 	c := &Client{
 		id:          id,
 		conn:        conn,
 		core:        core,
 		state:       ClientStateRunning,
 		stateMu:     &sync.Mutex{},
-		logger:      logger,
 		tcpDeadLine: tcpDeadLine,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -64,11 +93,11 @@ func newClient(conn net.Conn, id uint32, core *Core, logger Logger, tcpDeadLine 
 	c.goroutineCancel = cancel
 
 	c.ctx = &handler.Context{Client: c}
-	c.stopChan = make(chan bool, 1)
-	c.writeChan = make(chan []byte, 10)
+	//c.writeChan = make(chan []byte, 10)
+	c.cmdChan = make(chan handler.Command, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
-	c.logger.Debug(fmt.Sprintf("(%d)create client", id))
+	logrus.Debug(fmt.Sprintf("(%d)create client", id))
 	return c
 }
 
@@ -80,10 +109,10 @@ func (c *Client) RemoteAddr() net.Addr {
 }
 func (c *Client) Run() {
 	defer func() {
-		c.logger.Debug(fmt.Sprintf("(%d)delete", c.id))
+		logrus.Debug(fmt.Sprintf("(%d)delete", c.id))
 		c.core.deleteClient(c)
-		close(c.writeChan)
-		close(c.stopChan)
+		//close(c.writeChan)
+		close(c.cmdChan)
 		c.core = nil
 		c.ctx.Client = nil
 		c.ctx = nil
@@ -98,7 +127,7 @@ func (c *Client) Run() {
 			if c.state == ClientStateRunning {
 				c.readLoop()
 			} else {
-				break
+				return
 			}
 		}
 	}()
@@ -107,9 +136,9 @@ func (c *Client) Run() {
 		defer wg.Done()
 		for {
 			if c.state == ClientStateRunning {
-				c.writeLoop()
+				c.execCommandLoop()
 			} else {
-				break
+				return
 			}
 		}
 	}()
@@ -118,10 +147,16 @@ func (c *Client) Run() {
 
 }
 
+func (c *Client) ExecCommands(commands ...handler.Command) {
+	for _, command := range commands {
+		c.cmdChan <- command
+	}
+}
+
 func (c *Client) onError(err interface{}, ctx *handler.Context) {
 	defer func() {
 		if err := recover(); err != nil {
-			c.core.logger.Warn(fmt.Sprintf("(%d)err:%s", c.id, err))
+			logrus.Warn(fmt.Sprintf("(%d)err:%s", c.id, err))
 		}
 	}()
 	err_ := err.(error)
@@ -146,7 +181,7 @@ func (c *Client) readLoopGetHeadData() {
 	if err != nil {
 		panic(err)
 	}
-	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
+	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
 		panic(err)
@@ -181,15 +216,15 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte) {
 	if bodyLen == 0 {
 		return
 	}
-	expireAt := time.Now().Add(c.tcpDeadLine)
+	expireAt := time.Now().Add(time.Second * 3)
 	data = newDateBuff(bodyLen)
 
 	readLen := 0
-	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "read body")
+	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read body")
 
 	for {
 		if expireAt.Sub(time.Now()) <= 0 {
-			break
+			panic(errors.New("read time out"))
 		}
 		if readLen == bodyLen {
 			break
@@ -229,60 +264,71 @@ func (c *Client) readLoop() {
 	c.readLoopDealBody(data, ctx)
 }
 
-func (c *Client) writeLoop() {
+func (c *Client) execCommandLoop() {
 	defer func() {
-		if err := recover(); err != nil {
-			err_ := err.(error)
-			c.onError(err_, nil)
-		_:
-			c.Close()
+		if e := recover(); e != nil {
+			logrus.Warn(fmt.Sprintf("(%d)%s\r\n%s", c.id, e, debug.Stack()))
 		}
-
 	}()
-	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "wait for send data")
 
-	var data []byte
 	select {
-	case data = <-c.writeChan:
+	case cmd, ok := <-c.cmdChan:
+		if ok {
+			if err := cmd.Exec(); err != nil {
+				logrus.Warn(fmt.Sprintf("(%d)%s", c.id, err))
+				c.onError(err, c.ctx)
+			}
+		} else {
+			return
+		}
 	case <-c.goroutineCtx.Done():
-	_:
-		c.Close()
 		return
 	}
+}
 
-	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "got send data")
-	err := c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
+func (c *Client) Write(data []byte) (err error) {
+	defer func() {
+		if err != nil {
+			_ = c.Close()
+		}
+	}()
+
+	defer func() {
+		if e := recover(); e != nil {
+			err = errors.New(fmt.Sprintf("%s\r\n%s", e, debug.Stack()))
+		}
+	}()
+	logrus.Debug(fmt.Sprintf("(%d)send len(%d)", c.id, len(data)))
+
+	err = c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	n, err := c.conn.Write(data)
 	if err != nil {
-		panic(err)
+		return
 	}
 	if n != len(data) {
-		panic(errors.New("write len error"))
+		err = errors.New("write len error")
+		return
 	}
-	c.logger.Debug(fmt.Sprintf("(%d)", c.id), "send success:", strconv.Itoa(n))
-}
-
-func (c *Client) Write(data []byte) {
-	c.logger.Debug(fmt.Sprintf("(%d)send len(%d)", c.id, len(data)))
-	c.writeChan <- data
+	logrus.Debug(fmt.Sprintf("(%d)", c.id), "send success:", strconv.Itoa(n))
+	return
 }
 
 func (c *Client) Close() error {
-	c.logger.Debug(fmt.Sprintf("(%d)close signal", c.id))
+	logrus.Debug(fmt.Sprintf("(%d)close signal", c.id))
 	c.stateMu.Lock()
-	if c.state == ClientStateRunning {
+	if c.state < ClientStateStopping {
 		c.setState(ClientStateStopping)
 		c.stateMu.Unlock()
 		c.goroutineCancel()
 	} else {
 		c.stateMu.Unlock()
 	}
-
-	return c.conn.Close()
+	_ = c.conn.Close()
+	return nil
 }
 
 func (c *Client) SetFields(fields interface{}) {

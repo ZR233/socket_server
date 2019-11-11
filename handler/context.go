@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
+type Command interface {
+	Exec() (err error)
+}
+
 type Client interface {
-	Write(data []byte)
+	ExecCommands(commands ...Command)
 	Close() error
 	Id() uint32
 	RemoteAddr() net.Addr
