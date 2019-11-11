@@ -184,7 +184,11 @@ func (c *Client) readLoopGetHeadData() (err error) {
 	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
 	n, err := c.conn.Read(c.headerBuff)
 	if err != nil {
-		err = errors.U.FromError(err, errors.Socket)
+		if c.Stopped() {
+			err = nil
+		} else {
+			err = errors.U.FromError(err, errors.Socket)
+		}
 		return
 	}
 
@@ -207,11 +211,8 @@ func newDateBuff(len int) []byte {
 	return make([]byte, len)
 }
 
-func (c *Client) connRead(data []byte) (n int) {
-	n, err := c.conn.Read(data)
-	if err != nil {
-		panic(err)
-	}
+func (c *Client) connRead(data []byte) (n int, err error) {
+	n, err = c.conn.Read(data)
 	return
 }
 
@@ -236,10 +237,23 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 
 		err = c.conn.SetReadDeadline(expireAt)
 		if err != nil {
-			err = errors.U.NewStdError(errors.Socket, err.Error())
+			if c.Stopped() {
+				err = nil
+			} else {
+				err = errors.U.FromError(err, errors.Socket)
+			}
 			return
 		}
-		n := c.connRead(data[readLen:])
+		n := 0
+		n, err = c.connRead(data[readLen:])
+		if err != nil {
+			if c.Stopped() {
+				err = nil
+			} else {
+				err = errors.U.FromError(err, errors.Socket)
+			}
+			return
+		}
 
 		readLen += n
 	}
@@ -318,13 +332,21 @@ func (c *Client) Write(data []byte) (err error) {
 
 	err = c.conn.SetWriteDeadline(time.Now().Add(c.tcpDeadLine))
 	if err != nil {
-		err = errors.U.NewStdError(errors.Socket, err.Error())
+		if c.Stopped() {
+			err = nil
+		} else {
+			err = errors.U.FromError(err, errors.Socket)
+		}
 		return
 	}
 
 	n, err := c.conn.Write(data)
 	if err != nil {
-		err = errors.U.NewStdError(errors.Socket, err.Error())
+		if c.Stopped() {
+			err = nil
+		} else {
+			err = errors.U.FromError(err, errors.Socket)
+		}
 		return
 	}
 	if n != len(data) {
