@@ -94,9 +94,6 @@ func newClient(conn net.Conn, id uint32, core *Core, tcpDeadLine time.Duration) 
 	c.ctx = ctx
 	c.clientCtx = &Context{}
 	c.goroutineCancel = cancel
-
-	//c.ctx = &handler.Context{Client: c}
-	//c.writeChan = make(chan []byte, 10)
 	c.cmdChan = make(chan Command, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
