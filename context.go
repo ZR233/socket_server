@@ -2,30 +2,14 @@
 @Time : 2019-08-29 10:50
 @Author : zr
 */
-package handler
+package socket_server
 
 import (
-	"net"
 	"time"
 )
 
-type Command interface {
-	Exec() (err error)
-}
-
-type Client interface {
-	ExecCommands(commands ...Command)
-	Close() error
-	Id() uint32
-	RemoteAddr() net.Addr
-	SetFields(interface{})
-	GetFields() interface{}
-	Stopped() bool
-}
-
 type Context struct {
-	Client Client
-	Keys   map[string]interface{}
+	Keys map[string]interface{}
 }
 
 func (c *Context) Set(key string, value interface{}) {

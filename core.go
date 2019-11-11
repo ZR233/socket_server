@@ -6,7 +6,6 @@ package socket_server
 
 import (
 	"fmt"
-	"github.com/ZR233/socket_server/handler"
 	"github.com/sirupsen/logrus"
 	"net"
 	"sync"
@@ -14,13 +13,13 @@ import (
 	"time"
 )
 
-type HeaderHandler func(headerData []byte, ctx *handler.Context) (bodyLen int, err error)
+type HeaderHandler func(headerData []byte, ctx *Context) (bodyLen int, err error)
 type OnConnect func(client *Client)
 
 type Config struct {
 	ListenIP string
 	Port     int
-	Handler  handler.Handler
+	Handler  Handler
 }
 
 type Core struct {

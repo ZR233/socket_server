@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/ZR233/socket_server/handler"
+	"github.com/ZR233/goutils/errors2"
 	"github.com/sirupsen/logrus"
 	"log"
 	"math/rand"
@@ -22,11 +22,11 @@ import (
 type TestHandler struct {
 }
 
-func (t TestHandler) OnConnect(client handler.Client) {
+func (t TestHandler) OnConnect(client *Client) {
 	println("new client")
 }
 
-func (t TestHandler) HeaderHandler(headerData []byte, ctx *handler.Context) (bodyLen int, err error) {
+func (t TestHandler) HeaderHandler(headerData []byte, client *Client) (bodyLen int, err error) {
 	bytesBuffer := bytes.NewBuffer(headerData)
 	var j uint32
 	err = binary.Read(bytesBuffer, binary.BigEndian, &j)
@@ -34,12 +34,12 @@ func (t TestHandler) HeaderHandler(headerData []byte, ctx *handler.Context) (bod
 	fmt.Printf("body len %d", bodyLen)
 	return
 }
-func (t TestHandler) BodyHandler(bodyData []byte, ctx *handler.Context) (err error) {
+func (t TestHandler) BodyHandler(bodyData []byte, client *Client) (err error) {
 	fmt.Printf("body handler, len %d", len(bodyData))
 	return
 }
-func (t TestHandler) OnError(err error, ctx *handler.Context) {
-	println(err.Error())
+func (t TestHandler) OnError(stdErr *errors2.StdError, client *Client) {
+	println(stdErr.Error())
 	return
 }
 func (t TestHandler) HeaderLen() int {
