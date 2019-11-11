@@ -146,6 +146,9 @@ func (c *Client) Run() {
 }
 
 func (c *Client) ExecCommands(commands ...Command) {
+	defer func() {
+		recover()
+	}()
 	for _, command := range commands {
 		c.cmdChan <- command
 	}
