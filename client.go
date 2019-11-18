@@ -210,7 +210,7 @@ func (c *Client) readLoopGetBodyLen() (bodyLen int, err error) {
 	}
 	return
 }
-func newDateBuff(len int) []byte {
+func newDataBuff(len int) []byte {
 	return make([]byte, len)
 }
 
@@ -224,7 +224,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 		return
 	}
 	expireAt := time.Now().Add(time.Second * 3)
-	data = newDateBuff(bodyLen)
+	data = newDataBuff(bodyLen)
 
 	readLen := 0
 	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read body")
@@ -267,8 +267,13 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 	}
 	return
 }
+func copyData(data []byte) (data2 []byte) {
+	copy(data2, data)
+	return
+}
+
 func (c *Client) readLoopDealBody(data []byte) (err error) {
-	err = c.core.config.Handler.BodyHandler(data, c)
+	err = c.core.config.Handler.BodyHandler(copyData(data), c)
 	if err != nil {
 		err = errors.U.NewStdError(errors.Body, err.Error())
 	}
@@ -293,6 +298,7 @@ func (c *Client) readLoop() {
 		return
 	}
 	err = c.readLoopDealBody(data)
+	_ = data
 }
 
 func (c *Client) execCommandLoop() {
