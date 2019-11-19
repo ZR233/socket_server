@@ -268,6 +268,8 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 	return
 }
 func copyData(data []byte) (data2 []byte) {
+	dataLen := len(data)
+	data2 = make([]byte, dataLen)
 	copy(data2, data)
 	return
 }
