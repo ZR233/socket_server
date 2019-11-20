@@ -55,6 +55,7 @@ type Client struct {
 	ctx             context.Context
 	goroutineCancel context.CancelFunc
 	tcpDeadLine     time.Duration
+	readByte        []byte
 }
 
 func (c *Client) NewCommandWrite(data []byte) *CommandWrite {
@@ -97,6 +98,7 @@ func newClient(conn net.Conn, id uint32, core *Core, tcpDeadLine time.Duration) 
 	c.cmdChan = make(chan Command, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
 	c.headerBuff = make([]byte, headerLen)
+	c.readByte = []byte{0}
 	logrus.Debug(fmt.Sprintf("(%d)create client", id))
 	return c
 }
@@ -224,7 +226,6 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 		return
 	}
 	expireAt := time.Now().Add(time.Second * 3)
-	data = newDataBuff(bodyLen)
 
 	readLen := 0
 	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read body")
@@ -247,8 +248,10 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 			}
 			return
 		}
+		dataBatch := newDataBuff(bodyLen - readLen)
+
 		n := 0
-		n, err = c.connRead(data[readLen:])
+		n, err = c.connRead(dataBatch)
 		if err != nil {
 			if c.Stopped() {
 				err = nil
@@ -257,7 +260,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 			}
 			return
 		}
-
+		data = append(data, copyData(dataBatch)...)
 		readLen += n
 	}
 
@@ -300,7 +303,7 @@ func (c *Client) readLoop() {
 		return
 	}
 	err = c.readLoopDealBody(data)
-	_ = data
+	data = nil
 }
 
 func (c *Client) execCommandLoop() {
