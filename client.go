@@ -210,6 +210,12 @@ func (c *Client) readLoopGetBodyLen() (bodyLen int, err error) {
 		err = errors.U.NewStdError(errors.Header, err.Error())
 		return
 	}
+
+	if bodyLen > 1000*10 {
+		err = errors.U.NewStdError(errors.Header, "body too long")
+		return
+	}
+
 	return
 }
 func newDataBuff(len int) []byte {
