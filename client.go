@@ -266,7 +266,7 @@ func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
 			}
 			return
 		}
-		data = append(data, dataBatch...)
+		data = append(data, dataBatch[:n]...)
 		readLen += n
 	}
 
