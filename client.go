@@ -181,26 +181,27 @@ func (c *Client) readLoopDefer(err *error) {
 	}
 }
 func (c *Client) readLoopGetHeadData() (err error) {
-	err = c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
-	if err != nil {
-		err = errors.U.FromError(err, errors.Socket)
-		return
-	}
-	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
-	n, err := c.conn.Read(c.headerBuff)
-	if err != nil {
-		if c.Stopped() {
-			err = nil
-		} else {
-			err = errors.U.FromError(err, errors.Socket)
-		}
-		return
-	}
-
-	if n != c.core.config.Handler.HeaderLen() {
-		err = errors.U.NewStdError(errors.Header, "header len error")
-		return
-	}
+	//err = c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
+	//if err != nil {
+	//	err = errors.U.FromError(err, errors.Socket)
+	//	return
+	//}
+	//logrus.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
+	//n, err := c.conn.Read(c.headerBuff)
+	//if err != nil {
+	//	if c.Stopped() {
+	//		err = nil
+	//	} else {
+	//		err = errors.U.FromError(err, errors.Socket)
+	//	}
+	//	return
+	//}
+	//
+	//if n != c.core.config.Handler.HeaderLen() {
+	//	err = errors.U.NewStdError(errors.Header, "header len error")
+	//	return
+	//}
+	c.headerBuff, err = ReadFrom(c.conn, int64(c.core.config.Handler.HeaderLen()), c.tcpDeadLine)
 	return
 }
 
@@ -218,7 +219,7 @@ func (c *Client) readLoopGetBodyLen() (bodyLen int, err error) {
 
 	return
 }
-func newDataBuff(len int) []byte {
+func newDataBuff(len int64) []byte {
 	return make([]byte, len)
 }
 
@@ -227,55 +228,40 @@ func (c *Client) connRead(data []byte) (n int, err error) {
 	return
 }
 
-func (c *Client) readLoopGetBodyData(bodyLen int) (data []byte, err error) {
-	if bodyLen == 0 {
+func ReadFrom(conn net.Conn, wantLen int64, timeout time.Duration) (data []byte, err error) {
+	if wantLen == 0 {
 		return
 	}
-	expireAt := time.Now().Add(time.Second * 3)
-
-	readLen := 0
-	logrus.Debug(fmt.Sprintf("(%d)", c.id), "read body")
+	expireAt := time.Now().Add(timeout)
+	readLen := int64(0)
+	err = conn.SetReadDeadline(expireAt)
+	if err != nil {
+		err = errors.U.FromError(err, errors.Socket)
+		return
+	}
 
 	for {
 		if expireAt.Sub(time.Now()) <= 0 {
 			err = errors.U.NewStdError(errors.Socket, "read time out")
 			return
 		}
-		if readLen == bodyLen {
+		if readLen == wantLen {
 			break
 		}
-
-		err = c.conn.SetReadDeadline(expireAt)
-		if err != nil {
-			if c.Stopped() {
-				err = nil
-			} else {
-				err = errors.U.FromError(err, errors.Socket)
-			}
-			return
-		}
-		dataBatch := newDataBuff(bodyLen - readLen)
+		dataBatch := newDataBuff(wantLen - readLen)
 
 		n := 0
-		n, err = c.connRead(dataBatch)
+		n, err = conn.Read(dataBatch)
 		if err != nil {
-			if c.Stopped() {
-				err = nil
-			} else {
-				err = errors.U.FromError(err, errors.Socket)
-			}
 			return
 		}
 		data = append(data, dataBatch[:n]...)
-		readLen += n
+		readLen += int64(n)
 	}
 
-	if readLen != bodyLen {
-		err = errors.U.NewStdError(errors.Socket, "body len error")
-		return
-	}
 	return
 }
+
 func copyData(data []byte) (data2 []byte) {
 	dataLen := len(data)
 	data2 = make([]byte, dataLen)
@@ -297,6 +283,10 @@ func (c *Client) readLoop() {
 
 	err = c.readLoopGetHeadData()
 	if err != nil {
+		if c.Stopped() {
+			err = nil
+			return
+		}
 		return
 	}
 
@@ -304,8 +294,12 @@ func (c *Client) readLoop() {
 	if err != nil {
 		return
 	}
-	data, err := c.readLoopGetBodyData(bodyLen)
+	data, err := ReadFrom(c.conn, int64(bodyLen), time.Second*2)
 	if err != nil {
+		if c.Stopped() {
+			err = nil
+			return
+		}
 		return
 	}
 	err = c.readLoopDealBody(data)
