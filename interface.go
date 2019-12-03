@@ -16,6 +16,7 @@ type Handler interface {
 	OnConnect(client *Client)
 	OnError(stdErr *errors2.StdError, client *Client)
 	HeaderLen() int
+	OnClose(client *Client)
 }
 
 //type DefaultHandler struct {

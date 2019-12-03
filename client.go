@@ -381,6 +381,7 @@ func (c *Client) Close() error {
 	} else {
 		c.stateMu.Unlock()
 	}
+	c.core.config.Handler.OnClose(c)
 	_ = c.conn.Close()
 	return nil
 }
