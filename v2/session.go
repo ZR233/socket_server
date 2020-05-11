@@ -172,3 +172,6 @@ func (s *Session) ExecCommands(commands ...CmdInterface) {
 func (s *Session) Id() uint32 {
 	return s.id
 }
+func (s *Session) Stopped() bool {
+	return s.ctxCmd.Err() != nil
+}
