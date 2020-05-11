@@ -26,6 +26,7 @@ type Session struct {
 }
 
 func (s *Session) close() {
+	s.server.options.Handler.OnClose(s)
 	close(s.closeChan)
 	s.server.deleteSession(s.id)
 	s.cancelCmd()
@@ -68,6 +69,7 @@ func newSession(id uint32, server *Server, conn net.Conn) (s *Session) {
 	}()
 	go s.runReadLoop()
 	go s.runCmdLoop()
+	s.server.options.Handler.OnConnect(s)
 	return
 }
 
