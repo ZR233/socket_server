@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 )
 
 func TestClient_Close(t *testing.T) {
@@ -55,4 +56,50 @@ func sender(conn *net.TCPConn) {
 		panic(err)
 	}
 	fmt.Printf("send %d", n)
+}
+
+func TestClient_Send(t *testing.T) {
+	fmt.Println("client launch")
+	serverAddr := "localhost:8888"
+	tcpAddr, err := net.ResolveTCPAddr("tcp", serverAddr)
+	if err != nil {
+		fmt.Println("Resolve TCPAddr error", err)
+	}
+	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
+	defer conn.Close()
+	if err != nil {
+		fmt.Println("connect server error", err)
+	}
+
+	conn.Write([]byte("hello"))
+	time.Sleep(2 * time.Second) //等两秒钟，不然还没接收数据，程序就结束了。
+
+	conn.Write([]byte("world"))
+}
+func TestClient_Read(t *testing.T) {
+	fmt.Println("hello world")
+
+	lner, err := net.Listen("tcp", "localhost:8888")
+	if err != nil {
+		fmt.Println("listener creat error", err)
+	}
+	fmt.Println("waiting for client")
+	for {
+		conn, err := lner.Accept()
+		if err != nil {
+			fmt.Println("accept error", err)
+		}
+
+		conn.SetDeadline(time.Now().Add(time.Second * 50))
+		buf := [10]byte{}
+
+		for {
+			_, err := conn.Read(buf[:])
+			if err != nil {
+				return
+			}
+			println(string(buf[:]))
+		}
+
+	}
 }

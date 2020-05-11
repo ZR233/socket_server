@@ -26,6 +26,9 @@ func (t TestHandler) OnConnect(client *Client) {
 	println("new client")
 }
 
+func (t TestHandler) OnClose(client *Client) {
+
+}
 func (t TestHandler) HeaderHandler(headerData []byte, client *Client) (bodyLen int, err error) {
 	bytesBuffer := bytes.NewBuffer(headerData)
 	var j uint32

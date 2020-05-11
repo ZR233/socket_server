@@ -5,6 +5,7 @@
 package errors
 
 import (
+	"fmt"
 	"github.com/ZR233/goutils/errors2"
 )
 
@@ -15,3 +16,8 @@ var (
 	Body    = errors2.U.NewErrorType(2, "header error", "header error")
 )
 var U = errors2.U
+
+var (
+	ErrRemoteDisconnect = fmt.Errorf("remote disconnect")
+	ErrBodyLen          = fmt.Errorf("body len")
+)

@@ -181,26 +181,6 @@ func (c *Client) readLoopDefer(err *error) {
 	}
 }
 func (c *Client) readLoopGetHeadData() (err error) {
-	//err = c.conn.SetReadDeadline(time.Now().Add(c.tcpDeadLine))
-	//if err != nil {
-	//	err = errors.U.FromError(err, errors.Socket)
-	//	return
-	//}
-	//logrus.Debug(fmt.Sprintf("(%d)", c.id), "read header, time out:", c.tcpDeadLine.String())
-	//n, err := c.conn.Read(c.headerBuff)
-	//if err != nil {
-	//	if c.Stopped() {
-	//		err = nil
-	//	} else {
-	//		err = errors.U.FromError(err, errors.Socket)
-	//	}
-	//	return
-	//}
-	//
-	//if n != c.core.config.Handler.HeaderLen() {
-	//	err = errors.U.NewStdError(errors.Header, "header len error")
-	//	return
-	//}
 	c.headerBuff, err = ReadFrom(c.conn, int64(c.core.config.Handler.HeaderLen()), c.tcpDeadLine)
 	return
 }
