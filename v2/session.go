@@ -168,3 +168,7 @@ func (s *Session) ExecCommands(commands ...CmdInterface) {
 		s.cmdChan <- command
 	}
 }
+
+func (s *Session) Id() uint32 {
+	return s.id
+}
