@@ -67,9 +67,11 @@ func newSession(id uint32, server *Server, conn net.Conn) (s *Session) {
 		<-s.closeChan
 		s.close()
 	}()
+
+	s.server.options.Handler.OnConnect(s)
 	go s.runReadLoop()
 	go s.runCmdLoop()
-	s.server.options.Handler.OnConnect(s)
+
 	return
 }
 
