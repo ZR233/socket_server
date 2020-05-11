@@ -104,8 +104,7 @@ func (s *Server) onAccept() {
 		s.handleError(err, nil)
 		return
 	}
-	session := s.addSession(conn)
-	go s.options.Handler.OnConnect(session)
+	s.addSession(conn)
 }
 
 func (s *Server) Close() error {
