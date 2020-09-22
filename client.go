@@ -48,8 +48,6 @@ type Client struct {
 	id              uint32
 	cmdChan         chan Command
 	headerBuff      []byte
-	clientCtx       *Context
-	Fields          interface{}
 	state           ClientState
 	stateMu         *sync.Mutex
 	ctx             context.Context
@@ -68,10 +66,6 @@ func (c *Client) NewCommandClose() *CommandClose {
 	return &CommandClose{
 		client: c,
 	}
-}
-
-func (c *Client) GetCxt() *Context {
-	return c.clientCtx
 }
 
 func (c *Client) setState(state ClientState) {
@@ -93,7 +87,6 @@ func newClient(conn net.Conn, id uint32, core *Core, tcpDeadLine time.Duration) 
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.ctx = ctx
-	c.clientCtx = &Context{}
 	c.goroutineCancel = cancel
 	c.cmdChan = make(chan Command, 10)
 	headerLen := c.core.config.Handler.HeaderLen()
@@ -364,11 +357,4 @@ func (c *Client) Close() error {
 	c.core.config.Handler.OnClose(c)
 	_ = c.conn.Close()
 	return nil
-}
-
-func (c *Client) SetFields(fields interface{}) {
-	c.Fields = fields
-}
-func (c *Client) GetFields() interface{} {
-	return c.Fields
 }
